@@ -55,16 +55,22 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     const title = bm.title;
 
     // 4 Extract oldCount as the FIRST number in the title
-    const m = title.match(/^(\d+)/);
-    if (!m) {
-      // Malformed (doesn't start with digits) → reset to single-count
-      chrome.bookmarks.update(bm.id, {
-        title: `${newCount} ${ts}`
-      });
-      return;
-    }
-    const oldCount = m[1];
-    const oldCnt = parseInt(oldCount, 10);
+	let oldCount;
+	const arrowMatch = title.match(/(\d+)\s*→\s*(\d+)/);
+	if (arrowMatch) {
+		// We had "X → Y …", so Y is the previous count
+		oldCount = arrowMatch[2];
+	} else {
+		// No arrow, so grab the very first number
+		const m = title.match(/^(\d+)/);
+		if (!m) {
+			// malformed title—handle as before
+			// …
+			return;
+		}
+		oldCount = m[1];
+	}
+	const oldCnt = parseInt(oldCount, 10);
 
     // 5 Edge‐case: newCount dropped below oldCount → treat as reset
     if (newCnt < oldCnt) {
