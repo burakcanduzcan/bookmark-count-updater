@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Bookmark Count Updater X",
+  "version": "1.0",
+  "permissions": [
+    "bookmarks",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://YOUR-SITE.COM/page"    // ← adjust to the exact page URL
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://YOUR-SITE.COM/page"  // ← same URL here
+      ],
+      "js": ["content.js"]
+    }
+  ]
+}
