@@ -7,28 +7,28 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     const bm = results[0];
     const newCount = message.count;
 
-    // 2) Pull out the previous count, whether it was "123" or "123 → 456"
-    let prevCount = null;
-    const arrowMatch = bm.title.match(/->\s*(\d+)$/);
-    if (arrowMatch) {
-      prevCount = arrowMatch[1];
-    } else {
-      const numMatch = bm.title.match(/(\d+)$/);
-      if (numMatch) prevCount = numMatch[1];
-    }
+	// 2) Extract the “previous” count:
+    //    • If there’s an existing “X → Y”, grab Y
+    //    • Otherwise grab any trailing number
+    const arrowMatch = bm.title.match(/(\d+)\s*→\s*(\d+)/);
+    const prevCount = arrowMatch
+      ? arrowMatch[2]
+      : (bm.title.match(/(\d+)$/)?.[1] ?? null);
 
     // 3) If no prevCount or it didn’t change, do nothing
     if (!prevCount || prevCount === newCount) return;
 	
-	// 4) Strip off any trailing “123” or “123 → 456” from the title
-    const baseMatch = bm.title.match(/^(.*?)(?:\s*(?:\d+\s*->\s*\d+|\d+))$/);
-    const baseTitle = baseMatch ? baseMatch[1].trim() : bm.title;
+	// 4) Strip off any trailing digits/arrow/timestamp so we have a clean base title
+    //    This will remove “123”, “123 → 456”, or “123 → 456 @ …”
+    const baseTitle = bm.title
+      .replace(/\s*\d+(?:\s*→\s*\d+)?(?:\s*@.*)?$/, '')
+      .trim();
 	
-	// 5) Build “Base Title  OLD → NEW”
+	// 5) Build a fresh two-part diff
     const newTitle = `${baseTitle} ${prevCount} → ${newCount}`;
 
-    // 6) Apply only if it actually differs
-    if (bm.title !== newTitle) {
+    // 6) Apply it
+    if (newTitle !== bm.title) {
       chrome.bookmarks.update(bm.id, { title: newTitle });
     }
   });
