@@ -6,8 +6,7 @@
  *    b. Search bookmarks for this URL.
  *
  * 2. If no bookmark exists:
- *    → Create one named "<newCount> <timestamp>"
- *    → Exit.
+ *      Create one named "<newCount> <timestamp>" and exit.
  *
  * 3. If a bookmark exists:
  *    a. Let title = existing bookmark title.
@@ -16,63 +15,52 @@
  *
  *    c. Convert oldCount and newCount to integers.
  *    d. If newCount < oldCount:
- *       → Reset title to "<newCount> <timestamp>" and exit.
+ *         Reset title to "<newCount> <timestamp>" and exit.
  *
  *    e. If newCount == oldCount:
- *       → Do nothing and exit.
+ *         Do nothing and exit.
  *
  *    f. Otherwise (newCount > oldCount):
- *       → Update title to "<oldCount> → <newCount> <timestamp>"
+ *         Update title to "<oldCount> → <newCount> <timestamp>"
  */
 chrome.runtime.onMessage.addListener((message, sender) => {
-  // 1 Guards
   if (!message.count || !sender.tab?.url) return;
   const url = sender.tab.url;
   const newCount = message.count;
   const newCnt = parseInt(newCount, 10);
 
-  // 2 Build timestamp: HH:MM DD.MM.YY
   const now = new Date();
   const pad = n => n.toString().padStart(2, '0');
   const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const date = `${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear().toString().slice(-2)}`;
   const ts = `${time} ${date}`;
 
-  // 3 Find any existing bookmark for this URL
   chrome.bookmarks.search({ url }, results => {
-    // ▶️ Scenario 1: no bookmark at all
     if (!results || results.length === 0) {
       chrome.bookmarks.create({
-        parentId: '1',                   // Bookmarks Bar
+        parentId: '1',
         title: `${newCount} ${ts}`,
         url
       });
       return;
     }
 
-    // ▶️ We have a bookmark
     const bm = results[0];
     const title = bm.title;
 
-    // 4 Extract oldCount as the FIRST number in the title
 	let oldCount;
 	const arrowMatch = title.match(/(\d+)\s*→\s*(\d+)/);
 	if (arrowMatch) {
-		// We had "X → Y …", so Y is the previous count
 		oldCount = arrowMatch[2];
 	} else {
-		// No arrow, so grab the very first number
 		const m = title.match(/^(\d+)/);
 		if (!m) {
-			// malformed title—handle as before
-			// …
 			return;
 		}
 		oldCount = m[1];
 	}
 	const oldCnt = parseInt(oldCount, 10);
 
-    // 5 Edge‐case: newCount dropped below oldCount → treat as reset
     if (newCnt < oldCnt) {
       chrome.bookmarks.update(bm.id, {
         title: `${newCount} ${ts}`
@@ -80,10 +68,8 @@ chrome.runtime.onMessage.addListener((message, sender) => {
       return;
     }
 
-    // 6 No change → do nothing
     if (newCnt === oldCnt) return;
 
-    // ▶️ Scenario 3: count increased
     const newTitle = `${oldCount} → ${newCount} ${ts}`;
     if (newTitle !== title) {
       chrome.bookmarks.update(bm.id, { title: newTitle });
